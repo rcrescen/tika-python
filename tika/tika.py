@@ -325,7 +325,12 @@ def parse1(option, urlOrPath, serverEndpoint=ServerEndpoint, verbose=Verbose, ti
     service = services.get(option, services['all'])
     if service == '/tika': responseMimeType = 'text/plain'
     headers.update({'Accept': responseMimeType, 'Content-Disposition': make_content_disposition_header(path)})
-    status, response = callServer('put', serverEndpoint, service, open(path, 'rb'),
+    if file_type != 'file_in_remote':
+        status, response = callServer('put', serverEndpoint, service, open(path,'rb'),
+                                  headers, verbose, tikaServerJar, config_path=config_path, rawResponse=rawResponse)
+    else:
+        headers.update({'fileUrl':path})
+        status, response = callServer('put', serverEndpoint, service, '',
                                   headers, verbose, tikaServerJar, config_path=config_path, rawResponse=rawResponse)
 
     if file_type == 'remote': os.unlink(path)
@@ -535,7 +540,10 @@ def callServer(verb, serverEndpoint, service, data, headers, verbose=Verbose, ti
     if type(data) is unicode_string:
         encodedData = data.encode('utf-8')
 
-    resp = verbFn(serviceUrl, encodedData, headers=headers, verify=False)
+    if data!='':
+        resp = verbFn(serviceUrl, encodedData, headers=headers, verify=False)
+    else:
+        resp = verbFn(serviceUrl, headers=headers, verify=False)
     if verbose:
         print(sys.stderr, "Request headers: ", headers)
         print(sys.stderr, "Response headers: ", resp.headers)
@@ -565,6 +573,7 @@ def checkTikaServer(scheme="http", serverHost=ServerHost, port=Port, tikaServerJ
         port = '443' if scheme == 'https' else '80'
 
     urlp = urlparse(tikaServerJar)
+    print urlp
     serverEndpoint = '%s://%s:%s' % (scheme, serverHost, port)
     jarPath = os.path.join(TikaJarPath, 'tika-server.jar')
     if 'localhost' in serverEndpoint or '127.0.0.1' in serverEndpoint:
@@ -691,6 +700,8 @@ def getRemoteFile(urlOrPath, destPath):
     urlp = urlparse(urlOrPath)
     if urlp.scheme == '':
         return (os.path.abspath(urlOrPath), 'local')
+    elif urlp.scheme in ('file'):
+        return (urlOrPath, 'file_in_remote')
     elif urlp.scheme not in ('http', 'https'):
         return (urlOrPath, 'local')
     else:
