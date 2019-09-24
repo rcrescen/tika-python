@@ -18,13 +18,13 @@
 
 from .tika import detectType1, callServer, ServerEndpoint
 
-def from_file(filename, config_path=None):
+def from_file(filename, serverEndpoint=ServerEndpoint, config_path=None):
     '''
     Detects MIME type of specified file
     :param filename: file whose type needs to be detected
     :return: MIME type
     '''
-    jsonOutput = detectType1('type', filename, config_path=config_path)
+    jsonOutput = detectType1('type', filename, serverEndpoint=serverEndpoint, config_path=config_path)
     return jsonOutput[1]
 
 def from_buffer(string, config_path=None):
